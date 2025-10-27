@@ -26,6 +26,10 @@ defmodule LibclusterPostgres.Strategy do
   @spec init([%{:config => any(), :meta => any(), optional(any()) => any()}, ...]) ::
           {:ok, %{:config => list(), :meta => map(), optional(any()) => any()},
            {:continue, :connect}}
+  def init([%{config: config} = state]) when is_function(config, 0) do
+    init([%{state | config: config.()}])
+  end
+
   def init([state]) do
     channel_name = Keyword.get(state.config, :channel_name, clean_cookie(Node.get_cookie()))
 
@@ -72,7 +76,7 @@ defmodule LibclusterPostgres.Strategy do
 
   def handle_info(:heartbeat, state) do
     Process.cancel_timer(state.meta.heartbeat_ref)
-    Postgrex.query(state.meta.conn, "NOTIFY \"#{state.config[:channel_name]}\", '#{node()}'", [])
+    Postgrex.query!(state.meta.conn, "NOTIFY \"#{state.config[:channel_name]}\", '#{node()}'", [])
     ref = heartbeat(state.config[:heartbeat_interval])
     {:noreply, put_in(state.meta.heartbeat_ref, ref)}
   end
